@@ -7,7 +7,7 @@
 
 import { extractIntent, analyzeDrift, generateDriftReport } from './drift.js';
 import { calculateReadiness, generateReadinessReport } from './readiness.js';
-import { calculateStaleness, generateStalenessAlert } from './staleness.js';
+import { calculateStaleness } from './staleness.js';
 
 const args = process.argv.slice(2);
 const command = args[0];

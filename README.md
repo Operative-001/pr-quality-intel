@@ -1,7 +1,11 @@
 # PR Quality Intel
 
 [![CI](https://github.com/Operative-001/pr-quality-intel/actions/workflows/test.yml/badge.svg)](https://github.com/Operative-001/pr-quality-intel/actions/workflows/test.yml)
-[![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<p align="center">
+  <img src="branding/logo.svg" alt="PR Quality Intel logo" width="150" />
+</p>
 
 > PR-level quality intelligence: drift detection, staleness alerts, merge readiness scoring.
 
@@ -116,15 +120,6 @@ const staleness = calculateStaleness(pr);
 - [ ] Round 2: Pre-commit drift warning, Slack integration
 - [ ] Round 3: GitHub App for automatic PR comments
 - [ ] Round 4: Team analytics dashboard
-
-## Commercial License
-
-Free for personal and non-commercial use.
-
-For commercial use, open an issue:
-```
-[COMMERCIAL LICENSE INQUIRY]
-```
 
 ---
 
