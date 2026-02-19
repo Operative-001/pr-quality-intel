@@ -33,6 +33,7 @@ Usage:
 
 Options:
   --threshold <n>      Drift threshold (default 0.40)
+  --base-drift <n>     Baseline drift before this change (default 0)
   --stale-days <n>     Stale threshold days (default 5)
   --warn-before <n>    Days before stale to ping (default 3)
   --webhook <url>      Send payload to webhook
@@ -144,14 +145,16 @@ async function main() {
     const intent = extractIntent(data.body || '');
     const drift = analyzeDrift(intent, data.commits || []);
     const driftPct = Math.round(drift.drift_score * 100);
+    const baseDrift = Number(arg('base-drift', '0'));
+    const increasePct = Math.round(Math.max(0, (drift.drift_score - baseDrift) * 100));
 
     if (drift.drift_score >= threshold) {
-      console.log(`⚠️ Pre-submit warning: this change will increase drift to ${driftPct}% (threshold ${Math.round(threshold * 100)}%).`);
+      console.log(`⚠️ Pre-submit warning: this will increase drift to ${driftPct}% (+${increasePct}pp, threshold ${Math.round(threshold * 100)}%).`);
       console.log('Action: split unrelated commits/files before push or mark scope update in PR description.');
       process.exit(2);
     }
 
-    console.log(`✅ Pre-submit check passed: estimated drift ${driftPct}% (threshold ${Math.round(threshold * 100)}%).`);
+    console.log(`✅ Pre-submit check passed: estimated drift ${driftPct}% (+${increasePct}pp, threshold ${Math.round(threshold * 100)}%).`);
     process.exit(0);
   }
 
@@ -207,6 +210,22 @@ async function main() {
     if (webhook) {
       const status = await postWebhook(webhook, { text: `${summary.summary}\n${summary.details.slice(0, 10).map(x => `• ${x}`).join('\n')}` });
       console.log(`webhook_status=${status}`);
+    }
+    process.exit(0);
+  }
+
+  if (command === 'dashboard') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing PR list JSON file path');
+      process.exit(1);
+    }
+    const prs = readJson(file);
+    const team = calculateTeamReadiness(prs);
+    if (args.includes('--json')) {
+      console.log(JSON.stringify(team, null, 2));
+    } else {
+      console.log(generateTeamDashboard(team));
     }
     process.exit(0);
   }

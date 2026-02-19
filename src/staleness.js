@@ -72,7 +72,9 @@ export function buildReviewerPingPayload(prs, options = {}) {
   for (const pr of prs) {
     const daysLeft = Math.max(0, staleDays - pr.staleness.inactive_days);
     const url = pr.html_url || pr.url || '(no-link)';
-    lines.push(`• #${pr.number} ${pr.title} — stale in ${daysLeft}d (${url})`);
+    const reviewers = (pr.requested_reviewers || []).map(r => `@${r.login || r}`).join(' ');
+    const urgency = daysLeft <= 1 ? '⏰' : '🔔';
+    lines.push(`• ${urgency} #${pr.number} ${pr.title} — stale in ${daysLeft}d ${reviewers} (${url})`);
   }
 
   return {

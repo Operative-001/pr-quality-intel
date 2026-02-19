@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateReadiness, generateReadinessReport } from '../src/readiness.js';
+import {
+  calculateReadiness,
+  generateReadinessReport,
+  calculateTeamReadiness,
+  generateTeamDashboard
+} from '../src/readiness.js';
 
 test('calculateReadiness gives max score for perfect PR', () => {
   const pr = {
@@ -67,4 +72,53 @@ test('generateReadinessReport produces markdown table', () => {
   const report = generateReadinessReport(readiness);
   assert.ok(report.includes('Merge Readiness'));
   assert.ok(report.includes('75%'));
+});
+
+test('calculateTeamReadiness builds team-level dashboard stats', () => {
+  const prs = [
+    {
+      number: 1,
+      title: 'Ready PR',
+      body: 'Detailed enough description for this pull request.',
+      draft: false,
+      requested_reviewers: [{ login: 'r1' }],
+      ci_status: 'success',
+      mergeable: true,
+      additions: 10,
+      deletions: 2,
+      approvals: 1
+    },
+    {
+      number: 2,
+      title: 'Blocked PR',
+      body: '',
+      draft: true,
+      requested_reviewers: [],
+      ci_status: 'failure',
+      mergeable: false,
+      additions: 700,
+      deletions: 10,
+      approvals: 0
+    }
+  ];
+
+  const result = calculateTeamReadiness(prs);
+  assert.equal(result.total_prs, 2);
+  assert.ok(result.team_readiness_percentage >= 0);
+  assert.equal(result.counts.ready, 1);
+  assert.ok(result.top_blockers.length > 0);
+});
+
+test('generateTeamDashboard renders merge readiness section', () => {
+  const report = generateTeamDashboard({
+    total_prs: 2,
+    team_readiness_percentage: 65,
+    merge_ready_percentage: 50,
+    counts: { ready: 1, almost: 0, not_ready: 1 },
+    top_blockers: [{ name: 'CI passing', count: 1 }],
+    prs: [{ number: 1, title: 'A', readiness: 100, level: 'ready' }]
+  });
+
+  assert.match(report, /Team Merge Readiness Dashboard/);
+  assert.match(report, /65%/);
 });

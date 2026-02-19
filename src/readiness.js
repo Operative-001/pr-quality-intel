@@ -30,6 +30,7 @@ export function calculateReadiness(pr) {
     name: 'Not a draft',
     passed: notDraft,
     points: notDraft ? 10 : 0,
+    max_points: 10,
     suggestion: notDraft ? null : 'Mark as ready for review when complete'
   });
   score += notDraft ? 10 : 0;
@@ -40,6 +41,7 @@ export function calculateReadiness(pr) {
     name: 'Reviewers assigned',
     passed: hasReviewers,
     points: hasReviewers ? 15 : 0,
+    max_points: 15,
     suggestion: hasReviewers ? null : 'Request reviewers for feedback'
   });
   score += hasReviewers ? 15 : 0;
@@ -50,6 +52,7 @@ export function calculateReadiness(pr) {
     name: 'CI passing',
     passed: ciPassing,
     points: ciPassing ? 25 : 0,
+    max_points: 25,
     suggestion: ciPassing ? null : 'Fix failing CI checks'
   });
   score += ciPassing ? 25 : 0;
@@ -60,6 +63,7 @@ export function calculateReadiness(pr) {
     name: 'No merge conflicts',
     passed: noConflicts,
     points: noConflicts ? 20 : 0,
+    max_points: 20,
     suggestion: noConflicts ? null : 'Resolve merge conflicts with base branch'
   });
   score += noConflicts ? 20 : 0;
@@ -73,6 +77,7 @@ export function calculateReadiness(pr) {
     name: 'Reasonable size (<500 lines)',
     passed: reasonableSize,
     points: reasonableSize ? 10 : 0,
+    max_points: 10,
     suggestion: reasonableSize ? null : `PR is ${totalLines} lines. Consider splitting into smaller PRs.`
   });
   score += reasonableSize ? 10 : 0;
@@ -83,6 +88,7 @@ export function calculateReadiness(pr) {
     name: 'Has approvals',
     passed: hasApprovals,
     points: hasApprovals ? 10 : 0,
+    max_points: 10,
     suggestion: hasApprovals ? null : 'Get at least one approval'
   });
   score += hasApprovals ? 10 : 0;
@@ -115,7 +121,7 @@ export function generateReadinessReport(readiness) {
 
   for (const check of readiness.checks) {
     const status = check.passed ? '✅' : '❌';
-    report += `| ${check.name} | ${status} | ${check.points}/${check.name === 'CI passing' ? 25 : check.name === 'No merge conflicts' ? 20 : check.name === 'Reviewers assigned' || check.name === 'Has approvals' ? 15 : 10} |\n`;
+    report += `| ${check.name} | ${status} | ${check.points}/${check.max_points ?? 10} |\n`;
   }
 
   if (readiness.blocking.length > 0) {

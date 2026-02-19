@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateStaleness, filterStalePRs, generateStalenessAlert } from '../src/staleness.js';
+import {
+  calculateStaleness,
+  filterStalePRs,
+  generateStalenessAlert,
+  findPreStalePRs,
+  buildReviewerPingPayload
+} from '../src/staleness.js';
 
 test('calculateStaleness returns fresh for recently updated PR', () => {
   const now = Date.now();
@@ -74,4 +80,24 @@ test('generateStalenessAlert returns null for fresh PR and message for stale', (
 
   assert.match(generateStalenessAlert(stalePr), /going stale/);
   assert.equal(generateStalenessAlert(freshPr), null);
+});
+
+test('buildReviewerPingPayload includes reviewers for self-healing ping', () => {
+  const now = Date.now();
+  const prs = [
+    {
+      number: 7,
+      title: 'Needs review',
+      html_url: 'https://example/pr/7',
+      requested_reviewers: [{ login: 'alice' }],
+      created_at: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  const preStale = findPreStalePRs(prs, { stale_days: 5, warning_days_before_stale: 3 });
+  const payload = buildReviewerPingPayload(preStale, { stale_days: 5, warning_days_before_stale: 3 });
+
+  assert.match(payload.text, /@alice/);
+  assert.match(payload.text, /stale in/);
 });
