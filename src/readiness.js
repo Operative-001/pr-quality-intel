@@ -19,6 +19,7 @@ export function calculateReadiness(pr) {
     name: 'Has description',
     passed: hasDescription,
     points: hasDescription ? 10 : 0,
+    max_points: 10,
     suggestion: hasDescription ? null : 'Add a description explaining what this PR does'
   });
   score += hasDescription ? 10 : 0;
@@ -97,7 +98,7 @@ export function calculateReadiness(pr) {
     level,
     emoji,
     checks,
-    blocking: checks.filter(c => !c.passed && c.points >= 15)
+    blocking: checks.filter(c => !c.passed && ['Reviewers assigned', 'CI passing', 'No merge conflicts'].includes(c.name))
   };
 }
 
@@ -108,10 +109,10 @@ export function calculateReadiness(pr) {
  */
 export function generateReadinessReport(readiness) {
   let report = `## ${readiness.emoji} Merge Readiness: ${readiness.percentage}%\n\n`;
-  
+
   report += `| Check | Status | Points |\n`;
   report += `|-------|--------|--------|\n`;
-  
+
   for (const check of readiness.checks) {
     const status = check.passed ? '✅' : '❌';
     report += `| ${check.name} | ${status} | ${check.points}/${check.name === 'CI passing' ? 25 : check.name === 'No merge conflicts' ? 20 : check.name === 'Reviewers assigned' || check.name === 'Has approvals' ? 15 : 10} |\n`;
@@ -130,4 +131,59 @@ export function generateReadinessReport(readiness) {
 
   report += `\n---\n*PR Quality Intel*`;
   return report;
+}
+
+export function calculateTeamReadiness(prs = []) {
+  const enriched = prs.map(pr => ({ ...pr, readiness: calculateReadiness(pr) }));
+  const total = enriched.length;
+  const avg = total ? Math.round(enriched.reduce((sum, pr) => sum + pr.readiness.percentage, 0) / total) : 0;
+  const ready = enriched.filter(pr => pr.readiness.level === 'ready');
+  const almost = enriched.filter(pr => pr.readiness.level === 'almost');
+  const notReady = enriched.filter(pr => pr.readiness.level === 'not_ready');
+
+  const blockers = new Map();
+  for (const pr of enriched) {
+    for (const block of pr.readiness.blocking) {
+      blockers.set(block.name, (blockers.get(block.name) || 0) + 1);
+    }
+  }
+
+  return {
+    total_prs: total,
+    team_readiness_percentage: avg,
+    merge_ready_percentage: total ? Math.round((ready.length / total) * 100) : 0,
+    counts: {
+      ready: ready.length,
+      almost: almost.length,
+      not_ready: notReady.length
+    },
+    top_blockers: [...blockers.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count })),
+    prs: enriched
+      .map(pr => ({ number: pr.number, title: pr.title, readiness: pr.readiness.percentage, level: pr.readiness.level }))
+      .sort((a, b) => b.readiness - a.readiness)
+  };
+}
+
+export function generateTeamDashboard(team) {
+  let out = `## 📊 Team Merge Readiness Dashboard\n\n`;
+  out += `- Team readiness: **${team.team_readiness_percentage}%**\n`;
+  out += `- Merge-ready PRs: **${team.merge_ready_percentage}%** (${team.counts.ready}/${team.total_prs})\n`;
+  out += `- Almost ready: ${team.counts.almost}\n`;
+  out += `- Not ready: ${team.counts.not_ready}\n`;
+
+  if (team.top_blockers.length) {
+    out += `\n### Top blockers\n`;
+    for (const b of team.top_blockers) out += `- ${b.name}: ${b.count} PR(s)\n`;
+  }
+
+  if (team.prs.length) {
+    out += `\n### PRs\n`;
+    for (const pr of team.prs.slice(0, 10)) out += `- #${pr.number ?? '?'} ${pr.title ?? '(untitled)'} — ${pr.readiness}% (${pr.level})\n`;
+  }
+
+  out += `\n---\n*PR Quality Intel*`;
+  return out;
 }

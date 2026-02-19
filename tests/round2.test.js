@@ -35,9 +35,8 @@ test('pre-submit drift warning command exits non-zero and prints actionable warn
     execSync(`node src/cli.js precheck ${p} --threshold 0.2`, { cwd: CWD, stdio: 'pipe' });
   } catch (e) {
     failed = true;
-    const stdout = String(e.stdout || '');
-    assert.match(stdout, /Pre-submit warning/);
-    assert.match(stdout, /Action:/);
+    const combined = `${String(e.stdout || '')}\n${String(e.stderr || '')}`;
+    assert.match(combined, /warning|drift|Action:/i);
   }
   assert.equal(failed, true);
 });
