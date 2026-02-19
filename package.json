@@ -1,0 +1,32 @@
+{
+  "name": "pr-quality-intel",
+  "version": "0.1.0",
+  "description": "PR Quality Intelligence - Drift detection, staleness alerts, merge readiness scoring",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Operative-001",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Operative-001/pr-quality-intel.git"
+  },
+  "keywords": [
+    "github",
+    "pull-request",
+    "code-review",
+    "drift-detection",
+    "developer-tools",
+    "automation"
+  ],
+  "bin": {
+    "pqi": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "webhook": "node src/webhook.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
