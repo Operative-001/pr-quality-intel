@@ -10,6 +10,7 @@ import { calculateReadiness, generateReadinessReport, calculateTeamReadiness, ge
 import { calculateStaleness, findPreStalePRs, buildReviewerPingPayload } from './staleness.js';
 import { generateAISummary } from './summary.js';
 import { calculateCoverageDelta, formatCoverageDeltaReport } from './coverage.js';
+import { canAutoMerge, shouldRequestScopeClarification, prioritizePRs, suggestBetterDescription, writeDescriptionFromCommits, parsePrUrl, trendGraph } from './round3.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -30,6 +31,13 @@ Usage:
   pqi summary <pr-list-json-file>            AI summary grouped by urgency
   pqi dashboard <pr-list-json-file>          Team-level merge readiness dashboard
   pqi coverage-delta <base> <head>           Coverage delta inline signal
+  pqi auto-merge <pr-json-file>              Safe auto-merge decision
+  pqi clarify <pr-json-file>                 Auto-request scope clarification comment
+  pqi prioritize <pr-list-json-file>         Review-this-first prioritization
+  pqi improve-desc <pr-json-file>            AI-suggest better PR description
+  pqi desc-from-commits <commits-json-file>  AI write description from commits
+  pqi check <pr-url> [--input pr.json]       Local check for any PR URL
+  pqi trends <merged-prs-json-file>          Trend graph (merged PRs/week)
   pqi drift <description>                    Check extracted intent
   pqi demo                                   Run demo analysis
 
@@ -246,6 +254,104 @@ async function main() {
       console.log(formatCoverageDeltaReport(result));
     }
     process.exit(result.level === 'critical_regression' ? 2 : 0);
+  }
+
+  if (command === 'auto-merge') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing PR JSON file path');
+      process.exit(1);
+    }
+    const pr = readJson(file);
+    const result = canAutoMerge(pr, {
+      min_approvals: Number(arg('min-approvals', '1')),
+      max_drift: Number(arg('threshold', '0.2'))
+    });
+    if (args.includes('--json')) console.log(JSON.stringify(result, null, 2));
+    else console.log(`${result.eligible ? '✅' : '⛔'} auto-merge ${result.eligible ? 'eligible' : 'blocked'} (${result.mode})\nreasons: ${result.reasons.join(', ') || 'none'}`);
+    process.exit(result.eligible ? 0 : 2);
+  }
+
+  if (command === 'clarify') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing PR JSON file path');
+      process.exit(1);
+    }
+    const pr = readJson(file);
+    const result = shouldRequestScopeClarification(pr, { drift_threshold: Number(arg('threshold', '0.4')) });
+    if (args.includes('--json')) console.log(JSON.stringify(result, null, 2));
+    else console.log(result.needed ? result.comment : 'No clarification needed.');
+    process.exit(0);
+  }
+
+  if (command === 'prioritize') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing PR list JSON file path');
+      process.exit(1);
+    }
+    const prs = readJson(file);
+    const ranked = prioritizePRs(prs);
+    if (args.includes('--json')) console.log(JSON.stringify(ranked, null, 2));
+    else ranked.slice(0, 20).forEach((pr, i) => console.log(`${i + 1}. #${pr.number} ${pr.title} [score=${pr.urgency_score}]`));
+    process.exit(0);
+  }
+
+  if (command === 'improve-desc') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing PR JSON file path');
+      process.exit(1);
+    }
+    const pr = readJson(file);
+    console.log(suggestBetterDescription(pr));
+    process.exit(0);
+  }
+
+  if (command === 'desc-from-commits') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing commits JSON file path');
+      process.exit(1);
+    }
+    const commits = readJson(file);
+    console.log(writeDescriptionFromCommits(commits, arg('title', 'PR Update')));
+    process.exit(0);
+  }
+
+  if (command === 'check') {
+    const url = args[1];
+    if (!url) {
+      console.error('Error: Missing PR URL');
+      process.exit(1);
+    }
+    const parsed = parsePrUrl(url);
+    const input = arg('input');
+    if (!input) {
+      console.log(`Parsed: ${parsed.owner}/${parsed.repo}#${parsed.number}`);
+      console.log('Tip: pass --input <pr.json> to run local analysis bundle.');
+      process.exit(0);
+    }
+    const pr = readJson(input);
+    const drift = analyzeDrift(extractIntent(pr.body || ''), pr.commits || []);
+    const readiness = calculateReadiness(pr);
+    const auto = canAutoMerge({ ...pr, drift_score: drift.drift_score });
+    console.log(`PR ${parsed.owner}/${parsed.repo}#${parsed.number}`);
+    console.log(`drift=${Math.round(drift.drift_score * 100)}% readiness=${readiness.percentage}% auto_merge=${auto.eligible}`);
+    process.exit(0);
+  }
+
+  if (command === 'trends') {
+    const file = args[1];
+    if (!file) {
+      console.error('Error: Missing merged PR list JSON file path');
+      process.exit(1);
+    }
+    const prs = readJson(file);
+    const graph = trendGraph(prs);
+    console.log(graph || 'No trend data');
+    process.exit(0);
   }
 
   if (command === 'drift') {

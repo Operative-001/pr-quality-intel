@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-02-19
+
+- Added safe auto-merge evaluator with safeguards (`pqi auto-merge`)
+- Added scope-clarification bot comment trigger on high drift (`pqi clarify`)
+- Added urgency-based review prioritization (`pqi prioritize`)
+- Added description improvement helpers (`pqi improve-desc`, `pqi desc-from-commits`)
+- Added zero-wait trivial-change detection for merge fast-path
+- Added PR URL local check command (`pqi check <pr-url>`)
+- Added merged PR trend graph command (`pqi trends`)
+
 ## 0.2.0 - 2026-02-19
 
 - Added coverage delta inline signal (`pqi coverage-delta <base> <head>`)

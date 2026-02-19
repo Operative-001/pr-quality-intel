@@ -9,6 +9,16 @@
 
 > PR-level quality intelligence: drift detection, staleness alerts, merge readiness scoring.
 
+## New in Round 3
+
+- **Safe auto-merge** (`pqi auto-merge`) with configurable safeguards
+- **Auto-request scope clarification** (`pqi clarify`) when drift crosses threshold
+- **Review-this-first prioritization** (`pqi prioritize`) by urgency/impact
+- **AI-style description improvement** (`pqi improve-desc`) and from commits (`pqi desc-from-commits`)
+- **Zero-wait merge support for trivial changes** (docs/typo fast-path)
+- **PR URL checker** (`pqi check <pr-url> [--input pr.json]`)
+- **Trend graph** (`pqi trends`) for merged PRs/week
+
 ## New in Round 2
 
 - **Pre-submit drift warning** (`pqi precheck`) with threshold and actionable output
