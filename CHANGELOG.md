@@ -2,6 +2,7 @@
 
 ## 0.2.0 - 2026-02-19
 
+- Added coverage delta inline signal (`pqi coverage-delta <base> <head>`)
 - Added pre-submit drift warning command (`pqi precheck`) with actionable threshold output
 - Added self-healing reviewer ping flow (`pqi ping`) with configurable pre-stale window
 - Added AI summary command (`pqi summary`) grouping PRs by urgency (stale/high-drift/blocked)

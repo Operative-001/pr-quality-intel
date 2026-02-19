@@ -9,6 +9,7 @@ import { extractIntent, analyzeDrift, generateDriftReport } from './drift.js';
 import { calculateReadiness, generateReadinessReport, calculateTeamReadiness, generateTeamDashboard } from './readiness.js';
 import { calculateStaleness, findPreStalePRs, buildReviewerPingPayload } from './staleness.js';
 import { generateAISummary } from './summary.js';
+import { calculateCoverageDelta, formatCoverageDeltaReport } from './coverage.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -28,6 +29,7 @@ Usage:
   pqi ping <pr-list-json-file>               Generate pre-stale reviewer pings
   pqi summary <pr-list-json-file>            AI summary grouped by urgency
   pqi dashboard <pr-list-json-file>          Team-level merge readiness dashboard
+  pqi coverage-delta <base> <head>           Coverage delta inline signal
   pqi drift <description>                    Check extracted intent
   pqi demo                                   Run demo analysis
 
@@ -228,6 +230,22 @@ async function main() {
       console.log(generateTeamDashboard(team));
     }
     process.exit(0);
+  }
+
+  if (command === 'coverage-delta') {
+    const base = args[1];
+    const head = args[2];
+    if (base == null || head == null) {
+      console.error('Error: Missing coverage args. Usage: pqi coverage-delta <base> <head>');
+      process.exit(1);
+    }
+    const result = calculateCoverageDelta(base, head);
+    if (args.includes('--json')) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatCoverageDeltaReport(result));
+    }
+    process.exit(result.level === 'critical_regression' ? 2 : 0);
   }
 
   if (command === 'drift') {
