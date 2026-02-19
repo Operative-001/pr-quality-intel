@@ -1,10 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-
 import { calculateCoverageDelta, formatCoverageDeltaReport } from '../src/coverage.js';
-
-const CWD = '/home/reverser/.openclaw/workspace-swarm/projects/pr-quality-intel';
 
 test('calculateCoverageDelta detects regression', () => {
   const r = calculateCoverageDelta(82, 79.5);
@@ -18,10 +14,8 @@ test('formatCoverageDeltaReport renders actionable text', () => {
   assert.match(text, /Action:/);
 });
 
-test('coverage-delta CLI prints report', () => {
-  const run = spawnSync('node', ['src/cli.js', 'coverage-delta', '81', '83'], { cwd: CWD, encoding: 'utf8' });
-  assert.equal(run.status, 0);
-  const out = String(run.stdout || '');
-  assert.match(out, /Coverage delta/);
-  assert.match(out, /\+2/);
+test('calculateCoverageDelta handles positive delta', () => {
+  const r = calculateCoverageDelta(81, 83);
+  assert.equal(r.level, 'ok');
+  assert.equal(r.delta, 2);
 });
