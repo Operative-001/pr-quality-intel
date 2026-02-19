@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 import { calculateCoverageDelta, formatCoverageDeltaReport } from '../src/coverage.js';
 
@@ -19,7 +19,9 @@ test('formatCoverageDeltaReport renders actionable text', () => {
 });
 
 test('coverage-delta CLI prints report', () => {
-  const out = execSync('node src/cli.js coverage-delta 81 83', { cwd: CWD, encoding: 'utf8' });
+  const run = spawnSync('node', ['src/cli.js', 'coverage-delta', '81', '83'], { cwd: CWD, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  const out = String(run.stdout || '');
   assert.match(out, /Coverage delta/);
   assert.match(out, /\+2/);
 });
