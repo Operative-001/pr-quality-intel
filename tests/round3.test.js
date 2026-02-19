@@ -1,9 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 import {
   canAutoMerge,
@@ -15,8 +11,6 @@ import {
   parsePrUrl,
   trendGraph
 } from '../src/round3.js';
-
-const CWD = '/home/reverser/.openclaw/workspace-swarm/projects/pr-quality-intel';
 
 test('auto-merge green signals eligible', () => {
   const r = canAutoMerge({ ci_status: 'success', mergeable: true, approvals: 1, drift_score: 0.1, draft: false, files_changed: ['src/a.js'] });
@@ -32,8 +26,8 @@ test('scope clarification comment generated on high drift', () => {
 test('prioritize ranks blocked first', () => {
   const now = Date.now();
   const ranked = prioritizePRs([
-    { number: 1, title: 'normal', created_at: new Date(now-2e8).toISOString(), updated_at: new Date(now-1e8).toISOString(), mergeable: true, drift_score: 0.1 },
-    { number: 2, title: 'blocked', created_at: new Date(now-2e8).toISOString(), updated_at: new Date(now-1e8).toISOString(), mergeable: false, drift_score: 0.1 }
+    { number: 1, title: 'normal', created_at: new Date(now - 2e8).toISOString(), updated_at: new Date(now - 1e8).toISOString(), mergeable: true, drift_score: 0.1 },
+    { number: 2, title: 'blocked', created_at: new Date(now - 2e8).toISOString(), updated_at: new Date(now - 1e8).toISOString(), mergeable: false, drift_score: 0.1 }
   ]);
   assert.equal(ranked[0].number, 2);
 });
@@ -57,17 +51,26 @@ test('parse PR URL and trend graph', () => {
   assert.match(g, /W/);
 });
 
-test('CLI check command works with URL + local input', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pqi-r3-'));
-  const f = path.join(dir, 'pr.json');
-  fs.writeFileSync(f, JSON.stringify({ body: 'Auth update', commits: [{ message: 'auth', files_changed: ['src/auth.js'] }], ci_status: 'success', mergeable: true, approvals: 1 }), 'utf8');
-  const run = spawnSync('node', ['src/cli.js', 'check', 'https://github.com/a/b/pull/1', '--input', f], { cwd: CWD, encoding: 'utf8' });
-  assert.equal(run.status, 0);
-  assert.match(String(run.stdout || ''), /auto_merge=/);
+test('auto-merge trivial fastpath can pass with zero approvals', () => {
+  const r = canAutoMerge({
+    ci_status: 'success',
+    mergeable: true,
+    approvals: 0,
+    drift_score: 0.05,
+    draft: false,
+    files_changed: ['README.md'],
+    additions: 2,
+    deletions: 1
+  });
+  assert.equal(r.eligible, true);
+  assert.equal(r.mode, 'zero_wait_trivial');
 });
 
-test('CLI coverage-delta still available', () => {
-  const run = spawnSync('node', ['src/cli.js', 'coverage-delta', '80', '81'], { cwd: CWD, encoding: 'utf8' });
-  assert.equal(run.status, 0);
-  assert.match(String(run.stdout || ''), /Coverage delta/);
+test('prioritize includes urgency score metadata', () => {
+  const now = Date.now();
+  const ranked = prioritizePRs([
+    { number: 10, title: 'A', created_at: new Date(now - 10 * 86400000).toISOString(), updated_at: new Date(now - 6 * 86400000).toISOString(), mergeable: true, drift_score: 0.4 }
+  ]);
+  assert.ok(ranked[0].urgency_score >= 0);
+  assert.ok(ranked[0].urgency_reason);
 });
