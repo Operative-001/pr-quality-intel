@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 import {
   canAutoMerge,
@@ -61,11 +61,13 @@ test('CLI check command works with URL + local input', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pqi-r3-'));
   const f = path.join(dir, 'pr.json');
   fs.writeFileSync(f, JSON.stringify({ body: 'Auth update', commits: [{ message: 'auth', files_changed: ['src/auth.js'] }], ci_status: 'success', mergeable: true, approvals: 1 }), 'utf8');
-  const out = execSync(`node src/cli.js check https://github.com/a/b/pull/1 --input ${f}`, { cwd: CWD, encoding: 'utf8' });
-  assert.match(out, /auto_merge=/);
+  const run = spawnSync('node', ['src/cli.js', 'check', 'https://github.com/a/b/pull/1', '--input', f], { cwd: CWD, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.match(String(run.stdout || ''), /auto_merge=/);
 });
 
 test('CLI coverage-delta still available', () => {
-  const out = execSync('node src/cli.js coverage-delta 80 81', { cwd: CWD, encoding: 'utf8' });
-  assert.match(out, /Coverage delta/);
+  const run = spawnSync('node', ['src/cli.js', 'coverage-delta', '80', '81'], { cwd: CWD, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.match(String(run.stdout || ''), /Coverage delta/);
 });
