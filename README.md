@@ -9,117 +9,68 @@
 
 > PR-level quality intelligence: drift detection, staleness alerts, merge readiness scoring.
 
-## Problem
+## New in Round 2
 
-- PRs grow out of scope without anyone noticing
-- Stale PRs accumulate and block releases
-- "Is this ready to merge?" requires checking 5 different things
-- Reviewers waste time on unfocused PRs
-
-## Solution
-
-**PR Quality Intel** provides:
-
-1. **Drift Detection** — Measures how much a PR has changed from its original intent
-2. **Staleness Alerts** — Notifies when PRs go stale before it becomes a problem
-3. **Merge Readiness Score** — Composite checklist: description, CI, conflicts, size, approvals
+- **Pre-submit drift warning** (`pqi precheck`) with threshold and actionable output
+- **Self-healing auto-pings** (`pqi ping`) for PRs nearing stale threshold, includes PR links
+- **AI summary digest** (`pqi summary`) grouped by urgency: stale / high drift / blocked
+- **Commit-level drift highlighting** in drift reports
 
 ## Quick Start
 
 ```bash
-# Install
-npm install -g pr-quality-intel
+npm install
+npm test
 
-# Run demo
-pqi demo
+# Analyze a PR JSON
+node src/cli.js analyze pr-data.json
 
-# Analyze a PR from JSON
-pqi analyze pr-data.json
+# Pre-submit check (non-zero exit if threshold exceeded)
+node src/cli.js precheck pr-data.json --threshold 0.4
 
-# Output as JSON
-pqi analyze pr-data.json --json
+# Reviewer ping payload 3 days before stale (stale=5)
+node src/cli.js ping prs.json --stale-days 5 --warn-before 3
+
+# AI summary digest
+node src/cli.js summary prs.json --threshold 0.4
 ```
 
-## Features
+## Pre-push / CI Usage
 
-### 🔍 Drift Detection
+Use this in pre-push or CI to warn before submission:
 
-Extracts intent from PR description, then measures how much commits deviate:
-
-```
-## ✅ PR Drift Score: 15%
-
-This PR stays on scope. Nice work!
+```bash
+node src/cli.js precheck pr-data.json --threshold 0.4
 ```
 
-### ⏰ Staleness Tracking
+When drift exceeds threshold, output includes:
 
-```
-## 🟡 PR #42 is going stale (7 days inactive)
-Needs attention.
-```
+- `This will increase drift to X%`
+- actionable hint to split unrelated commits/files
 
-### 📋 Merge Readiness
+## Webhook output
 
-```
-## 🟢 Merge Readiness: 85%
+Both `ping` and `summary` can post to webhook:
 
-| Check | Status | Points |
-|-------|--------|--------|
-| Has description | ✅ | 10/10 |
-| Not a draft | ✅ | 10/10 |
-| CI passing | ✅ | 25/25 |
-| No conflicts | ✅ | 20/20 |
-| Reasonable size | ✅ | 10/10 |
-| Has approvals | ✅ | 10/10 |
+```bash
+node src/cli.js ping prs.json --webhook https://hooks.slack.com/services/...
+node src/cli.js summary prs.json --webhook https://hooks.slack.com/services/...
 ```
 
-## Configuration
+## Core features
 
-Create `.github/pr-quality.yml`:
+1. **Drift Detection** — Measures scope deviation from original intent
+2. **Staleness Alerts** — Detects stale and pre-stale PRs
+3. **Merge Readiness Score** — Description, CI, conflicts, size, approvals
+4. **Urgency Digest** — Manager-friendly grouped summary
 
-```yaml
-drift_threshold: 0.3      # Alert if >30% scope change
-stale_days: 5             # Days until "stale"
-very_stale_days: 14       # Days until "very stale"
-coverage_required: 80     # Minimum coverage %
-```
-
-## API
-
-### Drift Analysis
+## API snippets
 
 ```javascript
-import { extractIntent, analyzeDrift } from 'pr-quality-intel/drift';
-
-const intent = extractIntent(prDescription);
-const drift = analyzeDrift(intent, commits);
-// { drift_score: 0.15, drift_level: 'low', files_unexpected: [] }
+import { analyzeDrift, extractIntent } from './src/drift.js';
+import { findPreStalePRs, buildReviewerPingPayload } from './src/staleness.js';
+import { generateAISummary } from './src/summary.js';
 ```
-
-### Readiness Score
-
-```javascript
-import { calculateReadiness } from 'pr-quality-intel/readiness';
-
-const readiness = calculateReadiness(prData);
-// { score: 85, level: 'ready', checks: [...] }
-```
-
-### Staleness
-
-```javascript
-import { calculateStaleness, filterStalePRs } from 'pr-quality-intel/staleness';
-
-const staleness = calculateStaleness(pr);
-// { inactive_days: 7, level: 'stale', is_stale: true }
-```
-
-## Roadmap
-
-- [ ] Round 2: Pre-commit drift warning, Slack integration
-- [ ] Round 3: GitHub App for automatic PR comments
-- [ ] Round 4: Team analytics dashboard
 
 ---
 
